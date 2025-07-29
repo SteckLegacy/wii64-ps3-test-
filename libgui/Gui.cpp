@@ -196,7 +196,7 @@ void Gui::drawBackground()
 	vertexTexcoord_id = rsxVertexProgramGetAttrib(vpo,"vertexTexcoord");
 
 	dbg_printf("IDs: P %d, MV %d, Pos %d, Col %d, Tex %d\r\n", projMatrix_id, 
-		modelViewMatrix_id, vertexPosition_id, vertexColor0_id, vertexTexcoord_id);
+		modelViewMatrix_id, vertexPosition_id->index, vertexColor0_id->index, vertexTexcoord_id);
 
 
 	fp_ucode = rsxFragmentProgramGetUCode(fpo,&fpsize);
@@ -226,7 +226,7 @@ void Gui::drawBackground()
 
 	rsxInvalidateTextureCache(context,GCM_INVALIDATE_TEXTURE);
 
-	texture.format		= (GCM_TEXTURE_FORMAT_A1R5G5B5 | GCM_TEXTURE_FORMAT_LIN); //CELL_GCM_TEXTURE_R5G5B5A1=(0x97)
+	texture.format		= (GCM_TEXTURE_FORMAT_A1R5G5B5); //CELL_GCM_TEXTURE_R5G5B5A1=(0x97)
 	texture.mipmap		= 1;
 	texture.dimension	= GCM_TEXTURE_DIMS_2D;
 	texture.cubemap		= GCM_FALSE;
@@ -244,10 +244,10 @@ void Gui::drawBackground()
 	texture.location	= GCM_LOCATION_RSX;
 	texture.pitch		= pitch;
 	texture.offset		= texture_offset;
-//	rsxLoadTexture(context,textureUnit_id,&texture);globalTextureUnit_id
-//	rsxTextureControl(context,textureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
-//	rsxTextureFilter(context,textureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
-//	rsxTextureWrapMode(context,textureUnit_id,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
+//	rsxLoadTexture(context,textureUnit_id->index,&texture);globalTextureUnit_id
+//	rsxTextureControl(context,textureUnit_id->index,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
+//	rsxTextureFilter(context,textureUnit_id->index,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+//	rsxTextureWrapMode(context,textureUnit_id->index,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 	rsxLoadTexture(context,globalTextureUnit_id,&texture);
 	rsxTextureControl(context,globalTextureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
 	rsxTextureFilter(context,globalTextureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
@@ -333,7 +333,7 @@ void Gui::drawBackground()
 							GCM_COLOR_MASK_R |
 							GCM_COLOR_MASK_A);
 
-	rsxSetColorMaskMRT(context,0);
+	rsxSetColorMaskMrt(context,0);
 
 	u16 x,y,w,h;
 	f32 min, max;
@@ -376,7 +376,7 @@ void Gui::drawBackground()
 
 	u32 color = 0;
 	rsxSetClearColor(context,color);
-	rsxSetClearDepthValue(context,0xffff);
+	rsxSetClearDepthStencil(context,0xffff);
 	rsxClearSurface(context,GCM_CLEAR_R |
 							GCM_CLEAR_G |
 							GCM_CLEAR_B |
@@ -384,7 +384,7 @@ void Gui::drawBackground()
 							GCM_CLEAR_S |
 							GCM_CLEAR_Z);
 
-	rsxZControl(context,0,1,1);
+	rsxSetZMinMaxControl(context,0,1,1);
 
 	for(int i=0;i<8;i++)
 		rsxSetViewportClip(context,i,display_width,display_height);
@@ -407,39 +407,39 @@ void Gui::drawBackground()
 	//void rsxDrawVertexBegin(gcmContextData *context,u32 type);
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 1.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 0.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 1.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 640.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 640.0f, 0.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 640.0f, 480.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 640.0f, 480.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 480.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 1.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 480.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 1.0f);
 	rsxDrawVertexEnd(context);
 ///
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
-		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 1.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 0.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 1.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 320.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 320.0f, 0.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 320.0f, 240.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 320.0f, 240.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 240.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 1.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 240.0f, 0.0f);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 1.0f);
 
 	rsxDrawVertexEnd(context);*/
 //	gfx->fillRect(50, 0, 100, 100);

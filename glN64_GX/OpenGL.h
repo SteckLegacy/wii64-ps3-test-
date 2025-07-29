@@ -40,7 +40,7 @@
 
 #ifdef PS3
 #include <rsx/rsx.h>
-#include <sysutil/video.h>
+#include <sysutil/video_out.h>
 #include "../main/rsxutil.h"
 #ifdef SHOW_DEBUG
 #include "../main/debug/DEBUG.h"
@@ -137,16 +137,17 @@ struct GLInfo
 
 #ifdef PS3
 	u32 fpsize;
+	u32 vpsize;
 	u32 fp_offset;
 	u32 *fp_buffer;
 
-	s32 projMatrix_id;
-	s32 modelViewMatrix_id;
-	s32 vertexPosition_id;
-	s32 vertexColor0_id;
-	s32 vertexTexcoord_id;
-	s32 textureUnit_id;
-	s32 mode_id;
+	rsxProgramConst *projMatrix_id;
+	rsxProgramConst *modelViewMatrix_id;
+	rsxProgramAttrib *vertexPosition_id;
+	rsxProgramAttrib *vertexColor0_id;
+	rsxProgramAttrib *vertexTexcoord_id;
+	rsxProgramAttrib *textureUnit_id;
+	rsxProgramConst *mode_id;
 	f32 shader_mode;
 
 	void *vp_ucode;

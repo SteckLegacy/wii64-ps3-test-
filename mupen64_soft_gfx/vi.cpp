@@ -39,7 +39,7 @@
 #endif
 #ifdef PS3
 #include <rsx/rsx.h>
-#include <sysutil/video.h>
+#include <sysutil/video_out.h>
 #include "../main/rsxutil.h"
 
 #include <vectormath/cpp/vectormath_aos.h>
@@ -47,6 +47,10 @@ using namespace Vectormath::Aos;
 
 #include "combined_shader_vpo.h"
 #include "combined_shader_fpo.h"
+
+
+void ps3DrawVertex2f(gcmContextData *context,u8 idx, float x, float y);
+void ps3DrawVertex4f(gcmContextData *context,u8 idx, float x, float y, float z, float w);
 #endif //PS3
 
 
@@ -269,6 +273,7 @@ void VI::updateScreen()
 	u32 fp_offset;
 	u32 *fp_buffer = NULL;
 
+#if 0
 	s32 projMatrix_id = -1;
 	s32 modelViewMatrix_id = -1;
 	s32 vertexPosition_id = -1;
@@ -276,6 +281,7 @@ void VI::updateScreen()
 	s32 vertexTexcoord_id = -1;
 	s32 textureUnit_id = -1;
 	s32 mode_id = -1;
+#endif
 
 	void *vp_ucode = NULL;
 	rsxVertexProgram *vpo = (rsxVertexProgram*)combined_shader_vpo;
@@ -290,7 +296,7 @@ void VI::updateScreen()
 	vertexColor0_id = rsxVertexProgramGetAttrib(vpo,"vertexColor");
 	vertexTexcoord_id = rsxVertexProgramGetAttrib(vpo,"vertexTexcoord");
 
-	fp_ucode = rsxFragmentProgramGetUCode(fpo,&fpsize);
+	rsxFragmentProgramGetUCode(fpo,&fp_ucode,&fpsize);
 	fp_buffer = (u32*)rsxMemalign(64,fpsize);
 	memcpy(fp_buffer,fp_ucode,fpsize);
 	rsxAddressToOffset(fp_buffer,&fp_offset);
@@ -326,7 +332,7 @@ void VI::updateScreen()
 
 	rsxInvalidateTextureCache(context,GCM_INVALIDATE_TEXTURE);
 
-	texture.format		= (GCM_TEXTURE_FORMAT_A1R5G5B5 | GCM_TEXTURE_FORMAT_LIN); //CELL_GCM_TEXTURE_R5G5B5A1=(0x97)
+	texture.format		= (GCM_TEXTURE_FORMAT_A1R5G5B5); //CELL_GCM_TEXTURE_R5G5B5A1=(0x97)
 	texture.mipmap		= 1;
 	texture.dimension	= GCM_TEXTURE_DIMS_2D;
 	texture.cubemap		= GCM_FALSE;
@@ -344,10 +350,10 @@ void VI::updateScreen()
 	texture.location	= GCM_LOCATION_RSX;
 	texture.pitch		= pitch;
 	texture.offset		= texture_offset;
-	rsxLoadTexture(context,textureUnit_id,&texture);
-	rsxTextureControl(context,textureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
-	rsxTextureFilter(context,textureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
-	rsxTextureWrapMode(context,textureUnit_id,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
+	rsxLoadTexture(context,textureUnit_id->index,&texture);
+	rsxTextureControl(context,textureUnit_id->index,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
+	rsxTextureFilter(context,textureUnit_id->index,0,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+	rsxTextureWrapMode(context,textureUnit_id->index,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 
 	//setup draw environment:
 	rsxSetColorMask(context,GCM_COLOR_MASK_B |
@@ -355,7 +361,7 @@ void VI::updateScreen()
 							GCM_COLOR_MASK_R |
 							GCM_COLOR_MASK_A);
 
-	rsxSetColorMaskMRT(context,0);
+	rsxSetColorMaskMrt(context,0);
 
 	u16 x,y,w,h;
 	f32 min, max;
@@ -398,7 +404,7 @@ void VI::updateScreen()
 
 	u32 color = 0;
 	rsxSetClearColor(context,color);
-	rsxSetClearDepthValue(context,0xffff);
+	rsxSetClearDepthStencil(context,0xffff);
 	rsxClearSurface(context,GCM_CLEAR_R |
 							GCM_CLEAR_G |
 							GCM_CLEAR_B |
@@ -406,7 +412,7 @@ void VI::updateScreen()
 							GCM_CLEAR_S |
 							GCM_CLEAR_Z);
 
-	rsxZControl(context,0,1,1);
+	rsxSetZMinMaxControl(context,0,1,1);
 
 	//Turn off Blending
 	rsxSetBlendEnable(context, GCM_FALSE);
@@ -419,7 +425,7 @@ void VI::updateScreen()
 	rsxSetVertexProgramParameter(context,vpo,modelViewMatrix_id,(float*)&modelViewMatrix);
 
 	float shader_mode = 1; //SHADER_PASSTEX
-	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset);
+	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset,GCM_LOCATION_RSX);
 	rsxLoadFragmentProgramLocation(context,fpo,fp_offset,GCM_LOCATION_RSX);
 
 	rsxSetUserClipPlaneControl(context,GCM_USER_CLIP_PLANE_DISABLE,
@@ -432,21 +438,21 @@ void VI::updateScreen()
 	//void rsxDrawVertexBegin(gcmContextData *context,u32 type);
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
 
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, 0.0f, 0.0f, 0.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, 640.0f, 0.0f, 0.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, 640.0f, 0.0f, 0.0f, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 1.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, 640.0f, 480.0f, 0.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, 640.0f, 480.0f, 0.0f, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 1.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, 0.0f, 480.0f, 0.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 1.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, 0.0f, 480.0f, 0.0f, 1.0f);
 
 	rsxDrawVertexEnd(context);
 

@@ -1,0 +1,7 @@
+build/combined_shader_fpo.h
+build/combined_shader_vpo.h
+*.o
+*.d
+*.self
+*.map
+*.elf

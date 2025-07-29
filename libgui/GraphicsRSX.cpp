@@ -32,6 +32,8 @@ s32 globalTextureUnit_id;
 
 extern "C" unsigned int usleep(unsigned int us);
 void video_mode_init(GXRModeObj *rmode, unsigned int *fb1, unsigned int *fb2);
+void ps3DrawVertex2f(gcmContextData *context,u8 idx, float x, float y);
+void ps3DrawVertex4f(gcmContextData *context,u8 idx, float x, float y, float z, float w);
 
 namespace menu {
 
@@ -107,6 +109,8 @@ void Graphics::init()
 //	f32 aspect_ratio = 4.0f/3.0f;
 
 	fpsize = 0;
+	vpsize = 0;
+#if 0
 	projMatrix_id = -1;
 	modelViewMatrix_id = -1;
 	vertexPosition_id = -1;
@@ -114,6 +118,7 @@ void Graphics::init()
 	vertexTexcoord_id = -1;
 	textureUnit_id = -1;
 	mode_id = -1;
+#endif
 	vp_ucode = NULL;
 	fp_ucode = NULL;
 
@@ -130,21 +135,21 @@ void Graphics::init()
 	vpo = (rsxVertexProgram*)combined_shader_vpo;
 	fpo = (rsxFragmentProgram*)combined_shader_fpo;
 
-	vp_ucode = rsxVertexProgramGetUCode(vpo);
+	rsxVertexProgramGetUCode(vpo, &vp_ucode, &vpsize);
 	projMatrix_id = rsxVertexProgramGetConst(vpo,"projMatrix");
 	modelViewMatrix_id = rsxVertexProgramGetConst(vpo,"modelViewMatrix");
 	vertexPosition_id = rsxVertexProgramGetAttrib(vpo,"vertexPosition");
 	vertexColor0_id = rsxVertexProgramGetAttrib(vpo,"vertexColor");
 	vertexTexcoord_id = rsxVertexProgramGetAttrib(vpo,"vertexTexcoord");
 
-	fp_ucode = rsxFragmentProgramGetUCode(fpo,&fpsize);
+	rsxFragmentProgramGetUCode(fpo,&fp_ucode,&fpsize);
 	fp_buffer = (u32*)rsxMemalign(64,fpsize);
 	memcpy(fp_buffer,fp_ucode,fpsize);
 	rsxAddressToOffset(fp_buffer,&fp_offset);
 
 	mode_id = rsxFragmentProgramGetConst(fpo,"mode");
 	textureUnit_id = rsxFragmentProgramGetAttrib(fpo,"texture");
-	globalTextureUnit_id = textureUnit_id;
+	globalTextureUnit_id = textureUnit_id->index;
 
 
 
@@ -215,7 +220,7 @@ void Graphics::drawInit()
 							GCM_COLOR_MASK_G |
 							GCM_COLOR_MASK_R |
 							GCM_COLOR_MASK_A);
-	rsxSetColorMaskMRT(context,0);
+	rsxSetColorMaskMrt(context,0);
 
 	u16 x,y,w,h;
 	f32 min, max;
@@ -250,8 +255,8 @@ void Graphics::drawInit()
 	//Clear color buffer
 	u32 color = 0;
 	rsxSetClearColor(context,color);
-//	rsxSetClearDepthValue(context,0xffff);
-	rsxSetClearDepthValue(context,0x0);
+//	rsxSetClearDepthStencil(context,0xffff);
+	rsxSetClearDepthStencil(context,0x0);
 	rsxClearSurface(context,GCM_CLEAR_R |
 							GCM_CLEAR_G |
 							GCM_CLEAR_B |
@@ -259,7 +264,7 @@ void Graphics::drawInit()
 							GCM_CLEAR_S |
 							GCM_CLEAR_Z);
 
-	rsxZControl(context,0,1,1);
+	rsxSetZMinMaxControl(context,0,1,1);
 
 	for(int i=0;i<8;i++)
 		rsxSetViewportClip(context,i,display_width,display_height);
@@ -280,7 +285,7 @@ void Graphics::drawInit()
 	rsxSetVertexProgramParameter(context,vpo,projMatrix_id,(float*)&projMatrix);
 	rsxSetVertexProgramParameter(context,vpo,modelViewMatrix_id,(float*)&modelViewMatrix);
 
-	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset);
+	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset,GCM_LOCATION_RSX);
 	rsxLoadFragmentProgramLocation(context,fpo,fp_offset,GCM_LOCATION_RSX);
 
 
@@ -355,7 +360,7 @@ void Graphics::clearEFB(GXColor color, u32 zvalue)
 	//Clear color buffer
 	u32 color32 = ((u32)color.r<<24)|((u32)color.g<<16)|((u32)color.b<<16)|(u32)color.a;
 	rsxSetClearColor(context,color32);
-	rsxSetClearDepthValue(context,0xffff);
+	rsxSetClearDepthStencil(context,0xffff);
 	rsxClearSurface(context,GCM_CLEAR_R |
 							GCM_CLEAR_G |
 							GCM_CLEAR_B |
@@ -443,25 +448,25 @@ void Graphics::setColor(GXColor* color)
 void Graphics::drawRect(int x, int y, int width, int height)
 {
 	rsxDrawVertexBegin(context,GCM_TYPE_LINE_STRIP);
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
 			(float)appliedColor[1].b/255.0f, (float)appliedColor[1].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
 			(float)appliedColor[2].b/255.0f, (float)appliedColor[2].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) (y+height), depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
 			(float)appliedColor[3].b/255.0f, (float)appliedColor[3].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) (y+height), depth, 1.0f);
 	rsxDrawVertexEnd(context);
 
 /*	GX_Begin(GX_LINESTRIP, GX_VTXFMT0, 4);
@@ -486,42 +491,42 @@ void Graphics::fillRect(int x, int y, int width, int height)
 //		appliedColor[0].r, appliedColor[0].g, appliedColor[0].b, appliedColor[0].a);
 
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
 			(float)appliedColor[1].b/255.0f, (float)appliedColor[1].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
 			(float)appliedColor[2].b/255.0f, (float)appliedColor[2].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) (y+height), depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
 			(float)appliedColor[3].b/255.0f, (float)appliedColor[3].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) (y+height), depth, 1.0f);
 	rsxDrawVertexEnd(context);
 
-/*		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 1.0f);
+/*		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 0.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 1.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 640.0f, 0.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 1.0f, 1.0f, 1.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 640.0f, 0.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1.0f, 1.0f, 1.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 640.0f, 480.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 0.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 640.0f, 480.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 0.0f);
 
-		rsxDrawVertex3f(context, vertexPosition_id, 0.0f, 480.0f, 0.0f);
-		rsxDrawVertex4f(context, vertexColor0_id, 0.0f, 0.0f, 0.0f, 1.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f, 1.0f);
+		rsxDrawVertex3f(context, vertexPosition_id->index, 0.0f, 480.0f, 0.0f);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 0.0f, 0.0f, 0.0f, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f, 1.0f);
 */
 /*	GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
 		GX_Position3f32((float) x,(float) y, depth );
@@ -543,33 +548,33 @@ void Graphics::drawImage(int textureId, int x, int y, int width, int height, flo
 {
 	//input position and tex coords are measured from top left of screen/texture
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t1);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t1);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t1);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, s1, t1);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s2, t1);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s1, t1);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
 			(float)appliedColor[1].b/255.0f, (float)appliedColor[1].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t1);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t2);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t1);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, s2, t1);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s2, t2);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s2, t1);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) y, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[2].r/255.0f, (float)appliedColor[2].g/255.0f, 
 			(float)appliedColor[2].b/255.0f, (float)appliedColor[2].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t2);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t2);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s2, t2);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) (x+width),(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, s2, t2);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s1, t2);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s2, t2);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x+width),(float) (y+height), depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[3].r/255.0f, (float)appliedColor[3].g/255.0f, 
 			(float)appliedColor[3].b/255.0f, (float)appliedColor[3].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t2);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t1);
-//		rsxDrawVertex2f(context, vertexTexcoord_id, s1, t2);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) (y+height), depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, s1, t2);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s1, t1);
+//		ps3DrawVertex2f(context, vertexTexcoord_id, s1, t2);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) (y+height), depth, 1.0f);
 	rsxDrawVertexEnd(context);
 
 /*	//Init texture here or in calling code?
@@ -596,36 +601,36 @@ void Graphics::testPrim()
 //	setTEV(GX_MODULATE);
 	return;
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0, 0);
-		rsxDrawVertex4f(context, vertexColor0_id, 1, 0, 0, 1); //red
-		rsxDrawVertex4f(context, vertexPosition_id,  100, 300, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0, 0);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1, 0, 0, 1); //red
+		ps3DrawVertex4f(context, vertexPosition_id->index,  100, 300, depth, 1.0f);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0, 1);
-		rsxDrawVertex4f(context, vertexColor0_id, 0, 1, 0, 1); //green
-		rsxDrawVertex4f(context, vertexPosition_id,  100, 400, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0, 1);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 0, 1, 0, 1); //green
+		ps3DrawVertex4f(context, vertexPosition_id->index,  100, 400, depth, 1.0f);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1, 1);
-		rsxDrawVertex4f(context, vertexColor0_id, 0, 0, 1, 1); //blue
-		rsxDrawVertex4f(context, vertexPosition_id,  200, 400, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1, 1);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 0, 0, 1, 1); //blue
+		ps3DrawVertex4f(context, vertexPosition_id->index,  200, 400, depth, 1.0f);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1, 0);
-		rsxDrawVertex4f(context, vertexColor0_id, 1, 1, 1, 1); //white
-		rsxDrawVertex4f(context, vertexPosition_id,  200, 300, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 1, 0);
+		ps3DrawVertex4f(context, vertexColor0_id->index, 1, 1, 1, 1); //white
+		ps3DrawVertex4f(context, vertexPosition_id->index,  200, 300, depth, 1.0f);
 	rsxDrawVertexEnd(context);
 }
 
 void Graphics::drawLine(int x1, int y1, int x2, int y2)
 {
 	rsxDrawVertexBegin(context,GCM_TYPE_LINES);
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x1,(float) y1, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x1,(float) y1, depth, 1.0f);
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[1].r/255.0f, (float)appliedColor[1].g/255.0f, 
 			(float)appliedColor[1].b/255.0f, (float)appliedColor[1].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x2,(float) y2, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x2,(float) y2, depth, 1.0f);
 	rsxDrawVertexEnd(context);
 
 /*	GX_Begin(GX_LINES, GX_VTXFMT0, 2);
@@ -655,10 +660,10 @@ void Graphics::drawCircle(int x, int y, int radius, int numSegments)
 		point_x = (float)x + (float)radius * cos( angle );
 		point_y = (float)y + (float)radius * sin( angle );
 
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) point_x,(float) point_y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) point_x,(float) point_y, depth, 1.0f);
 		//GX_Position3f32((float) point_x,(float) point_y, depth );
 		//GX_Color4u8(appliedColor[0].r, appliedColor[0].g, appliedColor[0].b, appliedColor[0].a);
 		//GX_TexCoord2f32(0.0f,0.0f);
@@ -678,10 +683,10 @@ void Graphics::drawPoint(int x, int y, int radius)
 	//TODO: Implement this in psl1ght
 	//cellGcmSetPointSize(context,(float)radius*3)
 	rsxDrawVertexBegin(context,GCM_TYPE_POINTS);
-		rsxDrawVertex4f(context, vertexColor0_id, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
+		ps3DrawVertex4f(context, vertexColor0_id->index, (float)appliedColor[0].r/255.0f, (float)appliedColor[0].g/255.0f, 
 			(float)appliedColor[0].b/255.0f, (float)appliedColor[0].a/255.0f);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0.0f,0.0f);
-		rsxDrawVertex4f(context, vertexPosition_id, (float) x,(float) y, depth, 1.0f);
+		ps3DrawVertex2f(context, vertexTexcoord_id->index, 0.0f,0.0f);
+		ps3DrawVertex4f(context, vertexPosition_id->index, (float) x,(float) y, depth, 1.0f);
 	rsxDrawVertexEnd(context);
 
 /*	GX_SetPointSize(u8 (radius *3 ),GX_TO_ZERO);
@@ -779,7 +784,7 @@ void Graphics::setTEV(int tev_op)
 		shader_mode = (float) SHADER_MODULATE;
 		break;
 	}
-	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset);
+	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset,GCM_LOCATION_RSX);
 	rsxLoadFragmentProgramLocation(context,fpo,fp_offset,GCM_LOCATION_RSX);
 
 	//Called with: GX_MODULATE, GX_PASSCLR, GX_REPLACE

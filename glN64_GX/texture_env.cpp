@@ -204,7 +204,7 @@ void Set_texture_env( TexEnv *texEnv )
 //	dbg_printf("Set_texture_env shader_mode = %f\r\n",OGL.shader_mode);
 //	OGL.shader_mode = SHADER_PASSCOLOR;
 //	rsxFinish(context, OGL.finish_ref++);
-	rsxSetFragmentProgramParameter(context,OGL.fpo,OGL.mode_id,&OGL.shader_mode,OGL.fp_offset);
+	rsxSetFragmentProgramParameter(context,OGL.fpo,OGL.mode_id,&OGL.shader_mode,OGL.fp_offset,GCM_LOCATION_RSX);
 	rsxLoadFragmentProgramLocation(context,OGL.fpo,OGL.fp_offset,GCM_LOCATION_RSX);
 
 #elif defined(__GX__)

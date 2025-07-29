@@ -68,7 +68,7 @@ extern "C" {
 
 #include <assert.h>
 #include <io/pad.h>
-#include <sysutil/video.h>
+#include <sysutil/video_out.h>
 #include <rsx/rsx.h>
 #include "rsxutil.h"
 

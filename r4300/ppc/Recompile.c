@@ -576,7 +576,7 @@ static int pass0(PowerPC_block* ppc_block){
 	}
 }
 
-inline u32 update_invalid_addr(u32 addr);
+u32 update_invalid_addr(u32 addr);
 void jump_to(unsigned int address){
 	r4300.stop = 1;
 }

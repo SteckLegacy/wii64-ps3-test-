@@ -32,7 +32,7 @@
 
 extern u32 instructionCount;
 extern void (*interp_ops[64])(void);
-inline u32 update_invalid_addr(u32 addr);
+u32 update_invalid_addr(u32 addr);
 unsigned int dyna_check_cop1_unusable(unsigned int, int);
 unsigned int dyna_mem(unsigned int, unsigned int, memType, unsigned int, int);
 

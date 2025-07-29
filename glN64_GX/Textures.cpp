@@ -1514,15 +1514,15 @@ void TextureCache_ActivateTexture( u32 t, CachedTexture *texture )
 //	rsxFlushBuffer(context);
 	rsxInvalidateTextureCache(context,GCM_INVALIDATE_TEXTURE); //needed?
 
-	rsxLoadTexture(context,OGL.textureUnit_id,&texture->rsxTex);
-	rsxTextureControl(context,OGL.textureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
+	rsxLoadTexture(context,OGL.textureUnit_id->index,&texture->rsxTex);
+	rsxTextureControl(context,OGL.textureUnit_id->index,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
 	// Set filter mode. Almost always bilinear, but check anyways
 	if ((gDP.otherMode.textureFilter == G_TF_BILERP) || (gDP.otherMode.textureFilter == G_TF_AVERAGE) || (OGL.forceBilinear))
-		rsxTextureFilter(context,OGL.textureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+		rsxTextureFilter(context,OGL.textureUnit_id->index,0,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
 	else
-		rsxTextureFilter(context,OGL.textureUnit_id,GCM_TEXTURE_NEAREST,GCM_TEXTURE_NEAREST,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+		rsxTextureFilter(context,OGL.textureUnit_id->index,0,GCM_TEXTURE_NEAREST,GCM_TEXTURE_NEAREST,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
 	// Set clamping modes
-	rsxTextureWrapMode(context,OGL.textureUnit_id,texture->clampS ? GCM_TEXTURE_CLAMP_TO_EDGE : GCM_TEXTURE_REPEAT,
+	rsxTextureWrapMode(context,OGL.textureUnit_id->index,texture->clampS ? GCM_TEXTURE_CLAMP_TO_EDGE : GCM_TEXTURE_REPEAT,
 		texture->clampT ? GCM_TEXTURE_CLAMP_TO_EDGE : GCM_TEXTURE_REPEAT,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 //	dbg_printf("TextureCache_ActivateTexture %d\r\n", t);
 #elif defined(__GX__)
@@ -1586,10 +1586,10 @@ void TextureCache_ActivateDummy( u32 t )
 //	rsxFlushBuffer(context);
 	rsxInvalidateTextureCache(context,GCM_INVALIDATE_TEXTURE); //needed?
 
-	rsxLoadTexture(context,OGL.textureUnit_id,&cache.dummy->rsxTex);
-	rsxTextureControl(context,OGL.textureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
-	rsxTextureFilter(context,OGL.textureUnit_id,GCM_TEXTURE_NEAREST,GCM_TEXTURE_NEAREST,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
-	rsxTextureWrapMode(context,OGL.textureUnit_id,GCM_TEXTURE_REPEAT,GCM_TEXTURE_REPEAT,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
+	rsxLoadTexture(context,OGL.textureUnit_id->index,&cache.dummy->rsxTex);
+	rsxTextureControl(context,OGL.textureUnit_id->index,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
+	rsxTextureFilter(context,OGL.textureUnit_id->index,0,GCM_TEXTURE_NEAREST,GCM_TEXTURE_NEAREST,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+	rsxTextureWrapMode(context,OGL.textureUnit_id->index,GCM_TEXTURE_REPEAT,GCM_TEXTURE_REPEAT,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 //	dbg_printf("TextureCache_ActivateDummy %d\r\n", t);
 #elif defined(__GX__)
 	if (cache.dummy->GXtexture != NULL) 

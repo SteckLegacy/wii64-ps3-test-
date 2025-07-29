@@ -43,7 +43,7 @@ Image::Image(void* texture, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mip
 
 	switch(fmt)
 	{
-	case GX_TF_I4:	//Convert to GCM_TEXTURE_FORMAT_L8
+	case GX_TF_I4:	//Convert to GCM_TEXTURE_FORMAT_B8
 		rsxFmt = GCM_TEXTURE_FORMAT_L8 | GCM_TEXTURE_FORMAT_LIN;
 		bpp = 1;
 		pitch = (width*bpp);
@@ -67,7 +67,7 @@ Image::Image(void* texture, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mip
 			}
 		}
 		break;
-	case GX_TF_I8:	//Convert to GCM_TEXTURE_FORMAT_L8
+	case GX_TF_I8:	//Convert to GCM_TEXTURE_FORMAT_B8
 		rsxFmt = GCM_TEXTURE_FORMAT_L8 | GCM_TEXTURE_FORMAT_LIN;
 		bpp = 1;
 		pitch = (width*bpp);
@@ -90,7 +90,7 @@ Image::Image(void* texture, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mip
 		}
 		break;
 	case GX_TF_RGB5A3:	//Convert to GCM_TEXTURE_FORMAT_A1R5G5B5
-		rsxFmt = GCM_TEXTURE_FORMAT_A1R5G5B5 | GCM_TEXTURE_FORMAT_LIN;
+		rsxFmt = GCM_TEXTURE_FORMAT_A1R5G5B5;
 		bpp = 2;
 		pitch = (width*bpp);
 		rsx_texture_buffer = (u32*)rsxMemalign(128,(width*height*bpp));
@@ -114,7 +114,7 @@ Image::Image(void* texture, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mip
 		break;
 	case GX_TF_RGBA8:	//Convert to GCM_TEXTURE_FORMAT_A8R8G8B8
 	default:
-		rsxFmt = GCM_TEXTURE_FORMAT_A8R8G8B8 | GCM_TEXTURE_FORMAT_LIN;
+		rsxFmt = GCM_TEXTURE_FORMAT_A8R8G8B8;
 		bpp = 4;
 		pitch = (width*bpp);
 		rsx_texture_buffer = (u32*)rsxMemalign(128,(width*height*bpp));
@@ -145,7 +145,7 @@ Image::Image(void* texture, u16 wd, u16 ht, u8 fmt, u8 wrap_s, u8 wrap_t, u8 mip
 	texobj.mipmap		= 1;
 	texobj.dimension	= GCM_TEXTURE_DIMS_2D;
 	texobj.cubemap		= GCM_FALSE;
-	if (rsxFmt == (GCM_TEXTURE_FORMAT_L8 | GCM_TEXTURE_FORMAT_LIN))
+	if (rsxFmt == (GCM_TEXTURE_FORMAT_B8))
 	{
 		texobj.remap	= ((GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_B_SHIFT) |
 						   (GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_G_SHIFT) |
@@ -213,7 +213,7 @@ void Image::activateImage(u8 mapid)
 
 	rsxLoadTexture(context,globalTextureUnit_id,&texobj);
 	rsxTextureControl(context,globalTextureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
-	rsxTextureFilter(context,globalTextureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+	rsxTextureFilter(context,globalTextureUnit_id,0,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
 	rsxTextureWrapMode(context,globalTextureUnit_id,wraps,wrapt,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 //	dbg_printf("Image activate  globTexUnit %d\r\n", globalTextureUnit_id);
 #endif //!__GX__

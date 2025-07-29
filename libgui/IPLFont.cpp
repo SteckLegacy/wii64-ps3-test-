@@ -24,7 +24,10 @@
 #ifdef HW_RVL
 #include "../gc_memory/MEM2.h"
 #endif
-
+#ifdef PS3
+void ps3DrawVertex2f(gcmContextData *context,u8 idx, float x, float y);
+void ps3DrawVertex4f(gcmContextData *context,u8 idx, float x, float y, float z, float w);
+#endif
 namespace menu {
 
 #define FONT_TEX_SIZE_I4 ((512*512)>>1)
@@ -77,6 +80,7 @@ IplFont::IplFont()
 #ifndef __GX__
 	//Init RSX graphics environment
 	fpsize = 0;
+#if 0
 	projMatrix_id = -1;
 	modelViewMatrix_id = -1;
 	vertexPosition_id = -1;
@@ -84,6 +88,7 @@ IplFont::IplFont()
 	vertexTexcoord_id = -1;
 	textureUnit_id = -1;
 	mode_id = -1;
+#endif
 //	shader_mode = 1.0f; //SHADER_PASSTEX
 //	shader_mode = 2.0f; //SHADER_PASSCOLOR
 	shader_mode = 3.0f; //SHADER_MODULATE
@@ -144,7 +149,7 @@ void IplFont::initFont()
 	u16 width = fontData->sheet_width;
 	u16 height = fontData->sheet_height;
 	u32 pitch = width * bpp;
-	u8	rsxFmt = GCM_TEXTURE_FORMAT_L8 | GCM_TEXTURE_FORMAT_LIN;
+	u8	rsxFmt = 0;
 	rsx_texture_buffer = (u32*)rsxMemalign(128,(width*height*bpp));
 	if(!rsx_texture_buffer) return;
 
@@ -466,14 +471,14 @@ void IplFont::drawInit(GXColor fontColor)
 	vpo = (rsxVertexProgram*)combined_shader_vpo;
 	fpo = (rsxFragmentProgram*)combined_shader_fpo;
 
-	vp_ucode = rsxVertexProgramGetUCode(vpo);
+	rsxVertexProgramGetUCode(vpo,&vp_ucode,&vpsize);
 	projMatrix_id = rsxVertexProgramGetConst(vpo,"projMatrix");
 	modelViewMatrix_id = rsxVertexProgramGetConst(vpo,"modelViewMatrix");
 	vertexPosition_id = rsxVertexProgramGetAttrib(vpo,"vertexPosition");
 	vertexColor0_id = rsxVertexProgramGetAttrib(vpo,"vertexColor");
 	vertexTexcoord_id = rsxVertexProgramGetAttrib(vpo,"vertexTexcoord");
 
-	fp_ucode = rsxFragmentProgramGetUCode(fpo,&fpsize);
+	rsxFragmentProgramGetUCode(fpo,&fp_ucode,&fpsize);
 	fp_buffer = (u32*)rsxMemalign(64,fpsize);
 	memcpy(fp_buffer,fp_ucode,fpsize);
 	rsxAddressToOffset(fp_buffer,&fp_offset);
@@ -483,17 +488,17 @@ void IplFont::drawInit(GXColor fontColor)
 
 	//Init font texture
 	rsxInvalidateTextureCache(context,GCM_INVALIDATE_TEXTURE);
-	rsxLoadTexture(context,textureUnit_id,&texobj);
-	rsxTextureControl(context,textureUnit_id,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
-	rsxTextureFilter(context,textureUnit_id,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
-	rsxTextureWrapMode(context,textureUnit_id,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
+	rsxLoadTexture(context,textureUnit_id->index,&texobj);
+	rsxTextureControl(context,textureUnit_id->index,GCM_TRUE,0<<8,12<<8,GCM_TEXTURE_MAX_ANISO_1);
+	rsxTextureFilter(context,textureUnit_id->index,0,GCM_TEXTURE_LINEAR,GCM_TEXTURE_LINEAR,GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+	rsxTextureWrapMode(context,textureUnit_id->index,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,GCM_TEXTURE_CLAMP_TO_EDGE,0,GCM_TEXTURE_ZFUNC_LESS,0);
 
 	//setup draw environment:
 	rsxSetColorMask(context,GCM_COLOR_MASK_B |
 							GCM_COLOR_MASK_G |
 							GCM_COLOR_MASK_R |
 							GCM_COLOR_MASK_A);
-	rsxSetColorMaskMRT(context,0);
+	rsxSetColorMaskMrt(context,0);
 
 	u16 x,y,w,h;
 	f32 min, max;
@@ -526,7 +531,7 @@ void IplFont::drawInit(GXColor fontColor)
 	rsxSetCullFace(context,GCM_CULL_BACK);
 	rsxSetCullFaceEnable(context,GCM_FALSE);
 
-	rsxZControl(context,0,1,1);
+	rsxSetZMinMaxControl(context,0,1,1);
 
 	for(int i=0;i<8;i++)
 		rsxSetViewportClip(context,i,display_width,display_height);
@@ -544,7 +549,7 @@ void IplFont::drawInit(GXColor fontColor)
 	rsxSetVertexProgramParameter(context,vpo,modelViewMatrix_id,(float*)&modelViewMatrix);
 
 	rsxLoadFragmentProgramLocation(context,fpo,fp_offset,GCM_LOCATION_RSX);
-	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset);
+	rsxSetFragmentProgramParameter(context,fpo,mode_id,&shader_mode,fp_offset,GCM_LOCATION_RSX);
 
 	//Set blend mode
 	rsxSetBlendEnable(context, GCM_TRUE);
@@ -552,21 +557,21 @@ void IplFont::drawInit(GXColor fontColor)
 
 /*	//Test
 	rsxDrawVertexBegin(context,GCM_TYPE_QUADS);
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0, 0);
-		rsxDrawVertex4f(context, vertexColor0_id, 1, 0, 0, 1); //red
-		rsxDrawVertex3f(context, vertexPosition_id,  0, 200, 0);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0, 0);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1, 0, 0, 1); //red
+		rsxDrawVertex3f(context, vertexPosition_id->index,  0, 200, 0);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 0, 1);
-		rsxDrawVertex4f(context, vertexColor0_id, 0, 1, 0, 1); //green
-		rsxDrawVertex3f(context, vertexPosition_id,  0, 480, 0);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 0, 1);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0, 1, 0, 1); //green
+		rsxDrawVertex3f(context, vertexPosition_id->index,  0, 480, 0);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1, 1);
-		rsxDrawVertex4f(context, vertexColor0_id, 0, 0, 1, 1); //blue
-		rsxDrawVertex3f(context, vertexPosition_id,  300, 480, 0);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1, 1);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 0, 0, 1, 1); //blue
+		rsxDrawVertex3f(context, vertexPosition_id->index,  300, 480, 0);
 
-		rsxDrawVertex2f(context, vertexTexcoord_id, 1, 0);
-		rsxDrawVertex4f(context, vertexColor0_id, 1, 1, 1, 1); //white
-		rsxDrawVertex3f(context, vertexPosition_id,  300, 200, 0);
+		rsxDrawVertex2f(context, vertexTexcoord_id->index, 1, 0);
+		rsxDrawVertex4f(context, vertexColor0_id->index, 1, 1, 1, 1); //white
+		rsxDrawVertex3f(context, vertexPosition_id->index,  300, 200, 0);
 	rsxDrawVertexEnd(context);*/
 #endif //!__GX__
 }
@@ -650,10 +655,10 @@ void IplFont::drawString(int x, int y, char *string, float scale, bool centered)
 			float t0 = ((float) (fontChars.t[c] + t))/512;
 			s = (int) s * scale;
 			t = (int) t * scale;
-			rsxDrawVertex4f(context, vertexColor0_id, (float)fontColor.r/255.0f, (float)fontColor.g/255.0f, 
+			ps3DrawVertex4f(context, vertexColor0_id->index, (float)fontColor.r/255.0f, (float)fontColor.g/255.0f, 
 				(float)fontColor.b/255.0f, (float)fontColor.a/255.0f);
-			rsxDrawVertex2f(context, vertexTexcoord_id, s0, t0);
-			rsxDrawVertex4f(context, vertexPosition_id, (float) (x + s),(float) (y + t), 0.0f, 1.0f);
+			ps3DrawVertex2f(context, vertexTexcoord_id->index, s0, t0);
+			ps3DrawVertex4f(context, vertexPosition_id->index, (float) (x + s),(float) (y + t), 0.0f, 1.0f);
 		}
 		rsxDrawVertexEnd(context);
 #endif //!__GX__

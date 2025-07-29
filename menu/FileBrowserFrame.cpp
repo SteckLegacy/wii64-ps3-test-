@@ -317,7 +317,9 @@ static char* filenameFromAbsPath(char* absPath)
 }
 
 int loadROM(fileBrowser_file*);
-
+#ifndef stricmp
+#define stricmp strcasecmp
+#endif
 static int dir_comparator(const void* _x, const void* _y){
 	const fileBrowser_file* x = (const fileBrowser_file*)_x;
 	const fileBrowser_file* y = (const fileBrowser_file*)_y;

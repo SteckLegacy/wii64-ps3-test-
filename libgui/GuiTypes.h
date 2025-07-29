@@ -31,7 +31,7 @@
 //#include <ppu-types.h>
 #include <io/pad.h>
 #include <rsx/rsx.h>
-#include <sysutil/video.h>
+#include <sysutil/video_out.h>
 #include "../main/rsxutil.h"
 typedef struct _gx_color {
  	u8 r;			/*!< Red color component. */

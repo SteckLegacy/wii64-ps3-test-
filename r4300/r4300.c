@@ -53,7 +53,7 @@ PowerPC_block *actual;
 int rounding_mode = 0x33F, trunc_mode = 0xF3F, round_mode = 0x33F,
     ceil_mode = 0xB3F, floor_mode = 0x73F;
 
-inline u32 update_invalid_addr(u32 addr)
+u32 update_invalid_addr(u32 addr)
 {
    if (addr >= 0x80000000 && addr < 0xa0000000)
      {

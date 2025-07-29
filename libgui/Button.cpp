@@ -142,9 +142,7 @@ void Button::setFontSize(float size)
 #define TB_BUS_CLOCK				(sysGetTimebaseFrequency())		//1.6ghz
 #define TB_TIMER_CLOCK				(TB_BUS_CLOCK/4000)			//4th of the bus frequency
 
-u32 _DEFUN(gettick,(),
-	_NOARGS)
-
+u32 gettick()
 {
 	u32 result;
 	__asm__ __volatile__ (
